@@ -1,26 +1,25 @@
 # Hacktoberfest 2026 Event Tracker & Schedule (MLH)
-*Generated on: 2026-10-15 03:01:22 UTC+08:00 | Timezone: UTC+08:00*
+*Generated on: 2026-10-15 04:52:42 UTC+08:00 | Timezone: UTC+08:00*
 
 ## Summary
 - **Total Hacktoberfest Events**: 797
-- **Live Right Now**: 2
-- **Upcoming (Yet to be held)**: 512
-- **Completed**: 272
+- **Live Right Now**: 3
+- **Upcoming (Yet to be held)**: 510
+- **Completed**: 273
 - **Test Events**: 11
 
-## 🔴 Live Now (2)
+## 🔴 Live Now (3)
 
 | ID | Start (UTC+08:00) | Title | Series | Type | Event Page & Calendar |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **15157** | `2026-10-14 17:00:00 UTC+08:00` | **Hacktoberfest Hack Day Lagos x Global AI Community** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15157) [ICS](https://events.mlh.com/events/15157-hacktoberfest-hack-day-lagos-x-global-ai-community.ics) |
-| **15314** | `2026-10-15 02:00:00 UTC+08:00` | **[GHW Hacktoberfest] Open Source Tools Pt.2** | GHW: Livestream | Virtual | [Open Event](https://events.mlh.com/events/15314) [ICS](https://events.mlh.com/events/15314-ghw-hacktoberfest-open-source-tools-pt-2.ics) |
+| **15573** | `2026-10-15 04:00:00 UTC+08:00` | **Render Workflows** | Hacktoberfest 2026 Online | Virtual | [Open Event](https://events.mlh.com/events/15573) [ICS](https://events.mlh.com/events/15573-render-workflows.ics) |
+| **15284** | `2026-10-15 04:30:00 UTC+08:00` | **Hacktoberfest 2026 Hack Day Atlanta** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15284) [ICS](https://events.mlh.com/events/15284-hacktoberfest-2026-hack-day-atlanta.ics) |
 
-## ⏳ Upcoming Events (Yet to be Held) (512)
+## ⏳ Upcoming Events (Yet to be Held) (510)
 
 | ID | Start (UTC+08:00) | Title | Series | Type | Event Page & Calendar |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **15573** | `2026-10-15 04:00:00 UTC+08:00` | **Render Workflows** | Hacktoberfest 2026 Online | Virtual | [Open Event](https://events.mlh.com/events/15573) [ICS](https://events.mlh.com/events/15573-render-workflows.ics) |
-| **15284** | `2026-10-15 04:30:00 UTC+08:00` | **Hacktoberfest 2026 Hack Day Atlanta** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15284) [ICS](https://events.mlh.com/events/15284-hacktoberfest-2026-hack-day-atlanta.ics) |
 | **14770** | `2026-10-15 08:30:00 UTC+08:00` | **Hacktoberfest Hack Day @ SeattleJS** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14770) [ICS](https://events.mlh.com/events/14770-hacktoberfest-hack-day-seattlejs.ics) |
 | **15313** | `2026-10-15 10:00:00 UTC+08:00` | **[GHW Hacktoberfest] Mini-Event: Wiki Races** | GHW: Livestream | Virtual | [Open Event](https://events.mlh.com/events/15313) [ICS](https://events.mlh.com/events/15313-ghw-hacktoberfest-mini-event-wiki-races.ics) |
 | **14952** | `2026-10-15 10:30:00 UTC+08:00` | **Hacktoberfest Hack Day New Delhi x NAMESPACE BPIT** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14952) [ICS](https://events.mlh.com/events/14952-hacktoberfest-hack-day-new-delhi-x-namespace-bpit.ics) |
@@ -292,9 +291,9 @@
 | **15498** | `2026-10-24 18:00:00 UTC+08:00` | **Hacktoberfest Hack Day Ado-Ekiti x New Dawn School of Codes** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15498) [ICS](https://events.mlh.com/events/15498-hacktoberfest-hack-day-ado-ekiti-x-new-dawn-school-of-codes.ics) |
 | **15513** | `2026-10-24 18:00:00 UTC+08:00` | **Hacktoberfest Hack Day Faisalabad x Himmatkaar** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15513) [ICS](https://events.mlh.com/events/15513-hacktoberfest-hack-day-faisalabad-x-himmatkaar.ics) |
 | **14762** | `2026-10-24 18:30:00 UTC+08:00` | **Hacktoberfest Hack Day Chattogram x Dhaka GitHub User Group** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14762) [ICS](https://events.mlh.com/events/14762-hacktoberfest-hack-day-chattogram-x-dhaka-github-user-group.ics) |
-| **15121** | `2026-10-24 18:30:00 UTC+08:00` | **Hacktoberfest Hack Day Pune x NST ADYPU | Powered by NSTSDC** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15121) [ICS](https://events.mlh.com/events/15121-hacktoberfest-hack-day-pune-x-nst-adypu-powered-by-nstsdc.ics) |
+| **15121** | `2026-10-24 18:30:00 UTC+08:00` | **Hacktoberfest Hack Day Pune x NST ADYPU \| Powered by NSTSDC** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15121) [ICS](https://events.mlh.com/events/15121-hacktoberfest-hack-day-pune-x-nst-adypu-powered-by-nstsdc.ics) |
 | **15012** | `2026-10-24 19:00:00 UTC+08:00` | **Hacktoberfest Hack Day Amman x Jordan Open Source Association** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15012) [ICS](https://events.mlh.com/events/15012-hacktoberfest-hack-day-amman-x-jordan-open-source-association.ics) |
-| **15098** | `2026-10-24 19:00:00 UTC+08:00` | **Hacktoberfest x PoC Innovation | Hack Day | Le Kremlin-Bicêtre** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15098) [ICS](https://events.mlh.com/events/15098-hacktoberfest-x-poc-innovation-hack-day-le-kremlin-bicetre.ics) |
+| **15098** | `2026-10-24 19:00:00 UTC+08:00` | **Hacktoberfest x PoC Innovation \| Hack Day \| Le Kremlin-Bicêtre** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15098) [ICS](https://events.mlh.com/events/15098-hacktoberfest-x-poc-innovation-hack-day-le-kremlin-bicetre.ics) |
 | **15217** | `2026-10-24 19:00:00 UTC+08:00` | **Hacktoberfest Hack Day Nsukka x Dewdrop Labs** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15217) [ICS](https://events.mlh.com/events/15217-hacktoberfest-hack-day-nsukka-x-dewdrop-labs.ics) |
 | **15560** | `2026-10-24 19:00:00 UTC+08:00` | **Hacktoberfest Hack Day Madison x MadCloud** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15560) [ICS](https://events.mlh.com/events/15560-hacktoberfest-hack-day-madison-x-madcloud.ics) |
 | **14719** | `2026-10-24 20:00:00 UTC+08:00` | **Hacktoberfest Hack Day Halifax x Bluethumb Technologies** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14719) [ICS](https://events.mlh.com/events/14719-hacktoberfest-hack-day-halifax-x-bluethumb-technologies.ics) |
@@ -532,7 +531,7 @@
 | **15367** | `2026-11-01 13:00:00 UTC+08:00` | **Hacktoberfest Hack Day Muridke x AWS Student Builder Group at PGC Muridke** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15367) [ICS](https://events.mlh.com/events/15367-hacktoberfest-hack-day-muridke-x-aws-student-builder-group-at-pgc-muridke.ics) |
 | **15360** | `2026-11-09 17:30:00 UTC+08:00` | **Hacktoberfest 2026 in Ahmadpur East** | Hack Days | In-Person | [Open Event](https://events.mlh.com/events/15360) [ICS](https://events.mlh.com/events/15360-hacktoberfest-2026-in-ahmadpur-east.ics) |
 
-## ✅ Completed Events (272)
+## ✅ Completed Events (273)
 
 | ID | Start (UTC+08:00) | Title | Series | Type | Event Page & Calendar |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -612,7 +611,7 @@
 | **15030** | `2026-10-03 11:15:00 UTC+08:00` | **Hacktoberfest Hack Day Chandigarh** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15030) [ICS](https://events.mlh.com/events/15030-hacktoberfest-hack-day-chandigarh.ics) |
 | **14663** | `2026-10-03 11:30:00 UTC+08:00` | **Hack for Humanity @Ahmedabad** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14663) [ICS](https://events.mlh.com/events/14663-hack-for-humanity-ahmedabad.ics) |
 | **15006** | `2026-10-03 11:30:00 UTC+08:00` | **Hacktoberfest Hack Day Asansol x HackTropica** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15006) [ICS](https://events.mlh.com/events/15006-hacktoberfest-hack-day-asansol-x-hacktropica.ics) |
-| **14823** | `2026-10-03 12:00:00 UTC+08:00` | **Hacktoberfest Meetup Quezon City x Python Philippines & RELX | Reed Elsevier** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14823) [ICS](https://events.mlh.com/events/14823-hacktoberfest-meetup-quezon-city-x-python-philippines-relx-reed-elsevier.ics) |
+| **14823** | `2026-10-03 12:00:00 UTC+08:00` | **Hacktoberfest Meetup Quezon City x Python Philippines & RELX \| Reed Elsevier** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14823) [ICS](https://events.mlh.com/events/14823-hacktoberfest-meetup-quezon-city-x-python-philippines-relx-reed-elsevier.ics) |
 | **14860** | `2026-10-03 12:30:00 UTC+08:00` | **Hacktoberfest Hack Day Nagpur x GDGC Nagpur** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14860) [ICS](https://events.mlh.com/events/14860-hacktoberfest-hack-day-nagpur-x-gdgc-nagpur.ics) |
 | **14870** | `2026-10-03 12:30:00 UTC+08:00` | **Hacktoberfest Hack Day Dinajpur x Machine Learning Bangladesh** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/14870) [ICS](https://events.mlh.com/events/14870-hacktoberfest-hack-day-dinajpur-x-machine-learning-bangladesh.ics) |
 | **15004** | `2026-10-03 12:30:00 UTC+08:00` | **Hacktoberfest Hack Day Hyderabad <> React Hyderabad** | Hacktoberfest 2026 | In-Person | [Open Event](https://events.mlh.com/events/15004) [ICS](https://events.mlh.com/events/15004-hacktoberfest-hack-day-hyderabad-react-hyderabad.ics) |
@@ -808,6 +807,7 @@
 | **15571** | `2026-10-14 23:00:00 UTC+08:00` | **Gemma and the Open Model Ecosystem** | Hacktoberfest 2026 Online | Virtual | [Open Event](https://events.mlh.com/events/15571) [ICS](https://events.mlh.com/events/15571-gemma-and-the-open-model-ecosystem.ics) |
 | **15249** | `2026-10-15 00:00:00 UTC+08:00` | **[GHW Hacktoberfest] Today in Global Hack Week Day 6** | GHW: Livestream | Virtual | [Open Event](https://events.mlh.com/events/15249) [ICS](https://events.mlh.com/events/15249-ghw-hacktoberfest-today-in-global-hack-week-day-6.ics) |
 | **15572** | `2026-10-15 01:00:00 UTC+08:00` | **Code for Good with DPGA and GitHub** | Hacktoberfest 2026 Online | Virtual | [Open Event](https://events.mlh.com/events/15572) [ICS](https://events.mlh.com/events/15572-code-for-good-with-dpga-and-github.ics) |
+| **15314** | `2026-10-15 02:00:00 UTC+08:00` | **[GHW Hacktoberfest] Open Source Tools Pt.2** | GHW: Livestream | Virtual | [Open Event](https://events.mlh.com/events/15314) [ICS](https://events.mlh.com/events/15314-ghw-hacktoberfest-open-source-tools-pt-2.ics) |
 
 ## 🧪 Test Events (Filtered) (11)
 

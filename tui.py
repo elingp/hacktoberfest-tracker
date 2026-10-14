@@ -89,13 +89,9 @@ def load_events(db_path: str = DB_PATH, tz_offset: float = DEFAULT_TZ_OFFSET) ->
     if not os.path.exists(db_path):
         json_fallback = "hacktoberfest_events.json"
         if os.path.exists(json_fallback):
-            from scraper import init_db, save_event_to_db, record_checked_id
+            from scraper import init_db, bootstrap_db_from_json
             conn = init_db(db_path)
-            with open(json_fallback, "r", encoding="utf-8") as f:
-                cached_events = json.load(f)
-            for ev in cached_events:
-                save_event_to_db(conn, ev)
-                record_checked_id(conn, ev["event_id"], 200)
+            bootstrap_db_from_json(conn, json_fallback)
             conn.close()
         else:
             console.print(f"[bold red]Neither '{db_path}' nor '{json_fallback}' found! Run scraper.py first.[/bold red]")
@@ -477,6 +473,10 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
                     pass
             except ValueError:
                 console.print("[red]Invalid ID or row number.[/red]")
+                try:
+                    Prompt.ask("\nPress Enter to continue...")
+                except (KeyboardInterrupt, EOFError):
+                    pass
         elif choice.isdigit():
             val = int(choice)
             # If 1 <= val <= PAGE_SIZE, it's the row on the CURRENT page!
@@ -489,6 +489,10 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
                     show_event_details(match, tz_offset)
                 else:
                     console.print(f"[red]Event ID {val} not found.[/red]")
+                    try:
+                        Prompt.ask("\nPress Enter to continue...")
+                    except (KeyboardInterrupt, EOFError):
+                        pass
         elif c_lower.startswith("tz"):
             parts = choice.split(maxsplit=1)
             raw_input = parts[1].strip() if len(parts) > 1 else ""
@@ -555,16 +559,16 @@ def main():
         if args.today:
             filtered = filter_today_events(filtered, now, tz_offset)
             label = "Today / Next 24 Hours " + label
-        elif args.online:
-            filtered = [e for e in filtered if e.get("location_type") == "Virtual"]
-            label += " (Online)"
-
-        if args.upcoming:
+        elif args.upcoming:
             filtered = [e for e in filtered if e.get("status") == "UPCOMING"]
             label = "Upcoming " + label
         elif args.live:
             filtered = [e for e in filtered if e.get("status") == "LIVE"]
             label = "Live " + label
+
+        if args.online:
+            filtered = [e for e in filtered if e.get("location_type") == "Virtual"]
+            label += " (Online)"
 
         if args.search:
             filtered = filter_by_search(filtered, args.search)

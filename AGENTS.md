@@ -65,7 +65,7 @@ The repository scrapes, parses, normalizes, and tracks Major League Hacking (MLH
 
 ### Database Layer (`events.db`)
 SQLite database used for persistence and resuming:
-- `checked_ids`: `(event_id, http_status, checked_at)` — Records every checked ID. Ensures non-existent IDs (404) and already parsed events (200) are never redundantly requested across runs.
+- `checked_ids`: `(event_id, http_status, checked_at)` — Records terminal HTTP responses (`200` and `404`). Ensures non-existent IDs and already parsed events are never redundantly requested across runs. Transient network timeouts and server errors are omitted so they can be retried on subsequent runs.
 - `events`: Stores structured event fields, timestamps, series, location, and the `raw_json` payload.
 - **Git State**: `events.db` is strictly gitignored so binary SQLite blobs are not committed to git.
 
@@ -102,7 +102,7 @@ SQLite database used for persistence and resuming:
 
 ### Invariant 5: Zero-Setup SQLite Bootstrapping on Clone
 - **Context**: `events.db` is excluded from git. A newly cloned workspace only has `hacktoberfest_events.json`.
-- **Rule**: Both `tui.py` and `scraper.py` must check if `events.db` exists. If missing, they auto-populate `events` and `checked_ids` directly from `hacktoberfest_events.json` before querying. This allows anyone cloning the repository to run `./hacktrack` immediately without scraping.
+- **Rule**: Both `tui.py` and `scraper.py` must check if `events.db` exists. If missing, they auto-populate `events` and `checked_ids` directly from `hacktoberfest_events.json` using the shared `bootstrap_db_from_json(conn, json_path)` helper before querying. This allows anyone cloning the repository to run `./hacktrack` immediately without scraping.
 
 ---
 
@@ -112,7 +112,7 @@ SQLite database used for persistence and resuming:
 ```bash
 PYTHONPATH=. uv run python tests/test_parser.py
 ```
-*Tests cover: HTML microdata parsing, UTC to local conversion, live/upcoming/completed status resolution, multi-day past event handling, and Hacktoberfest series classification.*
+*Tests cover: HTML microdata parsing, in-person physical venue and address extraction, UTC to local conversion, live/upcoming/completed status resolution, multi-day past event handling, JSON database bootstrapping, TUI filtering helpers, and Hacktoberfest series classification.*
 
 ### Run Scraper Updates (Incremental + TBA Refresh)
 ```bash

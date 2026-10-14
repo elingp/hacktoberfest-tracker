@@ -1,21 +1,21 @@
 # Hacktoberfest 2026 Tracker
 
-Terminal browser and schedule tracker for Major League Hacking (MLH) Hacktoberfest 2026 events. It scrapes event pages sequentially, caches metadata in SQLite, converts UTC times to your local timezone, and lets you inspect and open event pages directly from your terminal.
+A terminal browser and schedule tracker for Major League Hacking (MLH) Hacktoberfest 2026 events. It scrapes event pages sequentially, caches metadata in SQLite, converts UTC times to your local timezone, and lets you inspect and open event pages directly from your terminal.
 
-## What it does
+## Features
 
-- **Event scraping**: Fetches MLH event pages from ID 14620 through 15600+ and caches responses in SQLite (`events.db`).
-- **Zero-setup clone**: Ships with a pre-scraped snapshot in `hacktoberfest_events.json`. When you clone the repo, the tracker populates the local database on first run without needing a full scrape.
-- **Local timezone detection**: Automatically detects your system timezone and converts event start times. You can also specify an offset manually (for example `--tz -4` for EDT or `--tz 5.5` for IST).
-- **Realistic live windows**: Many MLH events set their end date to the end of the month as a placeholder. The tracker marks events completed once their meetup day passes so the live view stays accurate.
-- **Terminal UI**: Shows upcoming events with countdowns, filters by format (online or in-person), and opens clean event pages in your browser without forcing auto-registration.
-- **Prebuilt exports**: Includes a readable Markdown schedule (`hacktoberfest_schedule.md`) and a full JSON export (`hacktoberfest_events.json`).
+- Scrapes MLH event pages from ID 14620 through 15600+ and caches responses in SQLite (`events.db`).
+- Includes a pre-scraped snapshot in `hacktoberfest_events.json`. When you clone the repository, the tracker populates the local database on first run, so you do not have to run a full scrape before using it.
+- Automatically detects your system timezone and converts event start times. You can also specify an offset manually (for example `--tz -4` for EDT or `--tz 5.5` for IST).
+- Handles multi-day placeholder dates. Organizers often set the end date to the end of the month even for one-day meetups. The tracker marks events completed once their meetup day passes to keep the live view accurate.
+- Terminal interface with countdown timers, filters for online or in-person events, and direct links to event overview pages.
+- Generates a Markdown schedule (`hacktoberfest_schedule.md`) and a full JSON export (`hacktoberfest_events.json`).
 
 ## Setup
 
 Requires Python 3.12+ and [uv](https://github.com/astral-sh/uv).
 
-Dependencies install automatically into a local `.venv` when running commands through `uv`:
+Install dependencies into a local virtual environment:
 
 ```bash
 uv sync
@@ -23,7 +23,7 @@ uv sync
 
 ## Usage
 
-### Interactive TUI
+### Interactive terminal UI
 
 Launch the tracker with the shortcut:
 
@@ -64,16 +64,19 @@ To view the schedule in a different timezone, pass the offset in hours:
 
 ### Non-interactive CLI
 
-Run one-off queries without launching the interactive screen:
+Run queries from the command line without launching the interactive screen:
 
 ```bash
 # Next 24 hours in local time
 ./hacktrack --today
 
+# Virtual events in the next 24 hours
+./hacktrack --today --online
+
 # Upcoming virtual events
 ./hacktrack --upcoming --online --limit 10
 
-# Search for a topic or city
+# Search by topic or city
 ./hacktrack --search "copilot"
 ./hacktrack --search "singapore"
 
@@ -86,7 +89,7 @@ Run one-off queries without launching the interactive screen:
 
 ### Checking for updates
 
-MLH adds events and fills in TBA venues throughout the month. You can check for additions from the command line:
+MLH adds events and updates venue details throughout the month. You can check for additions from the command line:
 
 ```bash
 ./update
@@ -94,9 +97,9 @@ MLH adds events and fills in TBA venues throughout the month. You can check for 
 uv run scraper.py --update
 ```
 
-(You can also press `u` while inside `./hacktrack`.)
+You can also press `u` while running `./hacktrack`.
 
-This scans sequentially from the highest known event ID until it hits 25 consecutive 404s, refreshes any events currently marked TBA, and regenerates both `hacktoberfest_events.json` and `hacktoberfest_schedule.md`.
+This scans sequentially from the highest known event ID until it encounters 25 consecutive 404 responses, refreshes any events currently marked TBA, and updates both `hacktoberfest_events.json` and `hacktoberfest_schedule.md`.
 
 To re-fetch all upcoming events if dates shifted:
 
@@ -114,8 +117,8 @@ PYTHONPATH=. uv run python tests/test_parser.py
 
 ```
 hacktoberfest-tracker/
-├── hacktrack                    # Executable launcher for the interactive TUI
-├── update                       # Executable launcher for incremental updates
+├── hacktrack                    # Launcher for the interactive terminal UI
+├── update                       # Launcher for incremental updates
 ├── tui.py                       # Terminal UI and search interface
 ├── scraper.py                   # Scraper, database manager, and exporter
 ├── pyproject.toml               # Project configuration and dependencies
@@ -124,11 +127,10 @@ hacktoberfest-tracker/
 ├── tests/
 │   └── test_parser.py           # Unit tests
 ├── LICENSE                      # MIT License
-├── README.md                    # This file
-└── AGENTS.md                    # Technical notes and invariants for AI agents
+├── README.md                    # Project documentation
+└── AGENTS.md                    # Technical notes and architecture guidelines
 ```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

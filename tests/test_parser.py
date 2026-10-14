@@ -33,6 +33,30 @@ SAMPLE_HTML = """
 </html>
 """
 
+SAMPLE_IN_PERSON_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+  <meta property="og:url" content="https://events.mlh.com/events/15121" />
+  <meta property="og:title" content="Hacktoberfest Hack Day Pune | Major League Hacking" />
+  <meta itemprop="startDate" content="2026-10-24 10:30:00 UTC" />
+  <meta itemprop="endDate" content="2026-10-24 16:30:00 UTC" />
+</head>
+<body>
+  <h1 itemprop="name">Hacktoberfest Hack Day Pune</h1>
+  <h4 class="text-mid-gray text-normal font-size-6 mt-1">Hacktoberfest 2026</h4>
+  <div itemprop="location" itemscope itemtype="https://schema.org/Place">
+    <div itemprop="name">NST ADYPU Campus</div>
+    <pre>Ajeenkya DY Patil University, Charholi Budruk, Pune, Maharashtra 412105</pre>
+  </div>
+  <div itemprop="description">
+    <p>Event Description</p>
+    <p>In-person hackathon in Pune.</p>
+  </div>
+</body>
+</html>
+"""
+
 class TestScraper(unittest.TestCase):
     def test_parse_event(self):
         data = parse_event(SAMPLE_HTML, 15572)
@@ -44,6 +68,14 @@ class TestScraper(unittest.TestCase):
         self.assertEqual(data["end_date_utc"], "2026-10-14 18:00:00 UTC")
         self.assertIn("A virtual session with DPGA", data["description"])
         self.assertEqual(data["registration_url"], "https://events.mlh.com/events/15572-code-for-good/register")
+
+    def test_parse_in_person_event(self):
+        data = parse_event(SAMPLE_IN_PERSON_HTML, 15121)
+        self.assertEqual(data["event_id"], 15121)
+        self.assertEqual(data["title"], "Hacktoberfest Hack Day Pune")
+        self.assertEqual(data["location_type"], "In-Person")
+        self.assertEqual(data["venue_name"], "NST ADYPU Campus")
+        self.assertIn("Ajeenkya DY Patil University", data["address"])
 
     def test_timezone_conversion(self):
         # UTC+8: 17:00:00 UTC -> 01:00:00 next day
@@ -207,6 +239,26 @@ class TestScraper(unittest.TestCase):
         self.assertEqual(len(filter_by_search(events_extra, "github")), 1)
         self.assertEqual(len(filter_by_search(events_extra, "times")), 1)
         self.assertEqual(len(filter_by_search(events_extra, "nonexistent")), 0)
+
+    def test_bootstrap_db_from_json(self):
+        import json
+        import os
+        import tempfile
+        from scraper import init_db, bootstrap_db_from_json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_db = os.path.join(tmpdir, "test.db")
+            test_json = os.path.join(tmpdir, "test.json")
+            events = [
+                {"event_id": 99991, "title": "Test Event 1", "is_hacktoberfest": True},
+                {"event_id": 99992, "title": "Test Event 2", "is_hacktoberfest": True},
+            ]
+            with open(test_json, "w", encoding="utf-8") as f:
+                json.dump(events, f)
+            conn = init_db(test_db)
+            max_id = bootstrap_db_from_json(conn, test_json)
+            conn.close()
+            self.assertEqual(max_id, 99992)
 
 
 if __name__ == "__main__":

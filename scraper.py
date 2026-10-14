@@ -374,9 +374,9 @@ def init_db(db_path: str = "events.db") -> sqlite3.Connection:
 
 
 def get_checked_ids(conn: sqlite3.Connection) -> Set[int]:
-    """Retrieve all IDs already fetched."""
+    """Retrieve all IDs already fetched successfully (200) or confirmed non-existent (404)."""
     cursor = conn.cursor()
-    cursor.execute("SELECT event_id FROM checked_ids")
+    cursor.execute("SELECT event_id FROM checked_ids WHERE http_status IN (200, 404)")
     return {row[0] for row in cursor.fetchall()}
 
 
@@ -414,12 +414,25 @@ def save_event_to_db(conn: sqlite3.Connection, event: Dict[str, Any]):
 
 
 def record_checked_id(conn: sqlite3.Connection, event_id: int, status_code: int):
-    """Record checked ID status."""
-    with conn:
-        conn.execute("""
-            INSERT OR REPLACE INTO checked_ids (event_id, http_status)
-            VALUES (?, ?)
-        """, (event_id, status_code))
+    """Record checked ID status for terminal HTTP statuses (200, 404)."""
+    if status_code in (200, 404):
+        with conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO checked_ids (event_id, http_status)
+                VALUES (?, ?)
+            """, (event_id, status_code))
+
+
+def bootstrap_db_from_json(conn: sqlite3.Connection, json_path: str = "hacktoberfest_events.json") -> int:
+    """Populate database from cached JSON snapshot if it exists. Returns max event ID found or 0."""
+    if not os.path.exists(json_path):
+        return 0
+    with open(json_path, "r", encoding="utf-8") as f:
+        cached = json.load(f)
+    for ev in cached:
+        save_event_to_db(conn, ev)
+        record_checked_id(conn, ev["event_id"], 200)
+    return max((e["event_id"] for e in cached), default=0)
 
 
 def export_dataset(
@@ -481,9 +494,9 @@ def export_dataset(
         for e in event_list:
             eid = e["event_id"]
             start_str = e.get("start_date_local") or "TBA"
-            t = e.get("title", "Untitled")
-            s = e.get("series", "—")
-            ltype = e.get("location_type", "Virtual")
+            t = (e.get("title") or "Untitled").replace("|", "\\|")
+            s = (e.get("series") or "—").replace("|", "\\|")
+            ltype = (e.get("location_type") or "Virtual").replace("|", "\\|")
             event_url = e.get("url") or f"{BASE_URL}/events/{eid}"
             ics_url = e.get("calendar_links", {}).get("ics", "")
             ics_badge = f" [ICS]({ics_url})" if ics_url else ""
@@ -550,34 +563,33 @@ def run_scraper(
             return
 
         # Shared connection-pooled session across worker threads
-        session = requests.Session()
+        with requests.Session() as session:
+            completed_count = 0
+            hf_found_count = 0
+            total = len(ids_to_scrape)
 
-        completed_count = 0
-        hf_found_count = 0
-        total = len(ids_to_scrape)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_id = {
+                    executor.submit(scrape_worker, eid, session, tz_offset_hours): eid
+                    for eid in ids_to_scrape
+                }
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_id = {
-                executor.submit(scrape_worker, eid, session, tz_offset_hours): eid
-                for eid in ids_to_scrape
-            }
+                for future in concurrent.futures.as_completed(future_to_id):
+                    completed_count += 1
+                    eid, status_code, event_data = future.result()
 
-            for future in concurrent.futures.as_completed(future_to_id):
-                completed_count += 1
-                eid, status_code, event_data = future.result()
-
-                record_checked_id(conn, eid, status_code)
-                if status_code == 200 and event_data:
-                    save_event_to_db(conn, event_data)
-                    if event_data.get("is_hacktoberfest"):
-                        hf_found_count += 1
-                        status_badge = event_data.get("status")
-                        logger.info(
-                            f"[{completed_count}/{total}] Event {eid}: "
-                            f"[{event_data.get('location_type')}] {event_data.get('title')} ({status_badge})"
-                        )
-                elif completed_count % 50 == 0 or completed_count == total:
-                    logger.info(f"Progress: {completed_count}/{total} IDs processed ({hf_found_count} Hacktoberfest events found so far).")
+                    record_checked_id(conn, eid, status_code)
+                    if status_code == 200 and event_data:
+                        save_event_to_db(conn, event_data)
+                        if event_data.get("is_hacktoberfest"):
+                            hf_found_count += 1
+                            status_badge = event_data.get("status")
+                            logger.info(
+                                f"[{completed_count}/{total}] Event {eid}: "
+                                f"[{event_data.get('location_type')}] {event_data.get('title')} ({status_badge})"
+                            )
+                    elif completed_count % 50 == 0 or completed_count == total:
+                        logger.info(f"Progress: {completed_count}/{total} IDs processed ({hf_found_count} Hacktoberfest events found so far).")
 
         logger.info("Scraping completed! Generating output files...")
         export_dataset(conn, json_path=json_path, md_path=md_path, tz_offset_hours=tz_offset_hours)
@@ -612,74 +624,69 @@ def update_events(
 
         if current_max_id is None and os.path.exists(json_path):
             logger.info(f"Bootstrapping database from {json_path}...")
-            with open(json_path, "r", encoding="utf-8") as f:
-                cached = json.load(f)
-            for ev in cached:
-                save_event_to_db(conn, ev)
-                record_checked_id(conn, ev["event_id"], 200)
-            current_max_id = max(e["event_id"] for e in cached)
+            max_id = bootstrap_db_from_json(conn, json_path)
+            current_max_id = max_id if max_id > 0 else None
 
         if current_max_id is None:
             current_max_id = 14619
 
-        session = requests.Session()
+        with requests.Session() as session:
+            # Refresh TBA or upcoming events if requested
+            if refresh_tba or refresh_upcoming:
+                if refresh_upcoming:
+                    cursor.execute("""
+                        SELECT event_id FROM events
+                        WHERE is_hacktoberfest = 1
+                          AND (status = 'UPCOMING' OR venue_name LIKE '%TBA%' OR venue_name LIKE '%TBD%')
+                    """)
+                else:
+                    cursor.execute("""
+                        SELECT event_id FROM events
+                        WHERE is_hacktoberfest = 1
+                          AND (venue_name LIKE '%TBA%' OR venue_name LIKE '%TBD%' OR start_date_utc IS NULL OR start_date_utc = '')
+                    """)
+                refresh_ids = [r[0] for r in cursor.fetchall()]
+                if refresh_ids:
+                    logger.info(f"Checking {len(refresh_ids)} events with TBA/upcoming status for updates...")
+                    for rid in refresh_ids:
+                        status_code, html = fetch_event_html(rid, session=session)
+                        if status_code == 200 and html:
+                            try:
+                                ev = parse_event(html, rid, tz_offset_hours=tz_offset_hours)
+                                save_event_to_db(conn, ev)
+                            except Exception as e:
+                                logger.error(f"Error refreshing event {rid}: {e}")
 
-        # Refresh TBA or upcoming events if requested
-        if refresh_tba or refresh_upcoming:
-            if refresh_upcoming:
-                cursor.execute("""
-                    SELECT event_id FROM events
-                    WHERE is_hacktoberfest = 1
-                      AND (status = 'UPCOMING' OR venue_name LIKE '%TBA%' OR venue_name LIKE '%TBD%')
-                """)
-            else:
-                cursor.execute("""
-                    SELECT event_id FROM events
-                    WHERE is_hacktoberfest = 1
-                      AND (venue_name LIKE '%TBA%' OR venue_name LIKE '%TBD%' OR start_date_utc IS NULL OR start_date_utc = '')
-                """)
-            refresh_ids = [r[0] for r in cursor.fetchall()]
-            if refresh_ids:
-                logger.info(f"Checking {len(refresh_ids)} events with TBA/upcoming status for updates...")
-                for rid in refresh_ids:
-                    status_code, html = fetch_event_html(rid, session=session)
-                    if status_code == 200 and html:
-                        try:
-                            ev = parse_event(html, rid, tz_offset_hours=tz_offset_hours)
-                            save_event_to_db(conn, ev)
-                        except Exception as e:
-                            logger.error(f"Error refreshing event {rid}: {e}")
+            # Probe upwards for new event IDs
+            logger.info(f"Checking for new events starting from ID {current_max_id + 1}...")
 
-        # Probe upwards for new event IDs
-        logger.info(f"Checking for new events starting from ID {current_max_id + 1}...")
+            current_id = current_max_id + 1
+            consecutive_404s = 0
+            newly_found = 0
+            new_hf_events = 0
 
-        current_id = current_max_id + 1
-        consecutive_404s = 0
-        newly_found = 0
-        new_hf_events = 0
+            while consecutive_404s < max_consecutive_404:
+                status_code, html = fetch_event_html(current_id, session=session)
+                record_checked_id(conn, current_id, status_code)
 
-        while consecutive_404s < max_consecutive_404:
-            status_code, html = fetch_event_html(current_id, session=session)
-            record_checked_id(conn, current_id, status_code)
+                if status_code == 200 and html:
+                    consecutive_404s = 0
+                    newly_found += 1
+                    try:
+                        ev = parse_event(html, current_id, tz_offset_hours=tz_offset_hours)
+                        save_event_to_db(conn, ev)
+                        if ev.get("is_hacktoberfest"):
+                            new_hf_events += 1
+                            logger.info(f"✨ Found new Hacktoberfest event {current_id}: {ev.get('title')} ({ev.get('start_date_local')})")
+                    except Exception as e:
+                        logger.error(f"Error parsing event {current_id}: {e}")
+                elif status_code == 404:
+                    consecutive_404s += 1
+                else:
+                    consecutive_404s += 1
 
-            if status_code == 200 and html:
-                consecutive_404s = 0
-                newly_found += 1
-                try:
-                    ev = parse_event(html, current_id, tz_offset_hours=tz_offset_hours)
-                    save_event_to_db(conn, ev)
-                    if ev.get("is_hacktoberfest"):
-                        new_hf_events += 1
-                        logger.info(f"✨ Found new Hacktoberfest event {current_id}: {ev.get('title')} ({ev.get('start_date_local')})")
-                except Exception as e:
-                    logger.error(f"Error parsing event {current_id}: {e}")
-            elif status_code == 404:
-                consecutive_404s += 1
-            else:
-                consecutive_404s += 1
-
-            current_id += 1
-            time.sleep(0.1)
+                current_id += 1
+                time.sleep(0.1)
 
         logger.info(f"Update check finished. Scanned up to ID {current_id - 1}. Found {newly_found} new events ({new_hf_events} Hacktoberfest).")
         export_dataset(conn, json_path=json_path, md_path=md_path, tz_offset_hours=tz_offset_hours)
@@ -719,7 +726,10 @@ def main():
 
     if args.export_only:
         conn = init_db(args.db)
-        export_dataset(conn, json_path=args.json, md_path=args.md, tz_offset_hours=tz_offset)
+        try:
+            export_dataset(conn, json_path=args.json, md_path=args.md, tz_offset_hours=tz_offset)
+        finally:
+            conn.close()
         return
 
     run_scraper(
