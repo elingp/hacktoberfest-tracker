@@ -407,7 +407,7 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
             console.print(
                 "  [bold]<1-12>[/]: View Event Details on page   │  [bold]<id>[/]: View by 5-digit Event ID\n"
                 "  [bold]o <#>[/]: Open Event Page in Browser     │  [bold]c[/]: Clear Filter / Search\n"
-                "  [bold]n[/]: Next Page  │  [bold]p[/]: Previous Page  │  [bold]r[/]: Refresh Clock  │  [bold]q[/]: Quit"
+                "  [bold]n[/]: Next Page  │  [bold]p[/]: Previous Page  │  [bold]tz <hrs>[/]: Timezone  │  [bold]r[/]: Refresh  │  [bold]q[/]: Quit"
             )
 
             choice = Prompt.ask("\nEnter command", default="n" if current_page < total_pages else "t").strip()
@@ -507,6 +507,36 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
                     show_event_details(match, tz_offset)
                 else:
                     console.print(f"[red]Event ID {val} not found.[/red]")
+        elif c_lower.startswith("tz"):
+            parts = choice.split(maxsplit=1)
+            if len(parts) > 1:
+                val = parts[1].strip().lower()
+                if val in ("auto", "host", "reset"):
+                    tz_offset = get_system_tz_offset()
+                    console.print(f"[bold green]Timezone reset to auto-detected host ({get_tz_label(tz_offset)})[/bold green]")
+                else:
+                    try:
+                        tz_offset = float(val)
+                        console.print(f"[bold green]Timezone switched to {get_tz_label(tz_offset)}[/bold green]")
+                    except ValueError:
+                        console.print(f"[bold red]Invalid timezone offset: '{parts[1]}'. Use hours (e.g. 'tz -4', 'tz 5.5', 'tz auto').[/bold red]")
+            else:
+                try:
+                    new_tz_input = Prompt.ask("Enter timezone offset in hours (e.g. -4, 5.5, or 'auto')").strip().lower()
+                    if new_tz_input in ("auto", "host", "reset"):
+                        tz_offset = get_system_tz_offset()
+                        console.print(f"[bold green]Timezone reset to auto-detected host ({get_tz_label(tz_offset)})[/bold green]")
+                    else:
+                        tz_offset = float(new_tz_input)
+                        console.print(f"[bold green]Timezone switched to {get_tz_label(tz_offset)}[/bold green]")
+                except (KeyboardInterrupt, EOFError):
+                    pass
+                except ValueError:
+                    console.print("[bold red]Invalid numeric timezone offset.[/bold red]")
+            try:
+                Prompt.ask("\nPress Enter to continue...")
+            except (KeyboardInterrupt, EOFError):
+                pass
         elif c_lower == "r":
             continue
 

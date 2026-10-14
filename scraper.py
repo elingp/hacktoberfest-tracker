@@ -55,14 +55,18 @@ def get_tz_label(tz_offset_hours: float) -> str:
 
 
 def utc_to_local(utc_str: Optional[str], tz_offset_hours: Optional[float] = None) -> Tuple[Optional[datetime], Optional[str]]:
-    """Convert 'YYYY-MM-DD HH:MM:SS UTC' string to local datetime and formatted string."""
+    """Convert UTC timestamp string (Schema.org or ISO 8601) to local datetime and formatted string."""
     if not utc_str:
         return None, None
     if tz_offset_hours is None:
         tz_offset_hours = get_system_tz_offset()
     try:
         clean_str = utc_str.replace(" UTC", "").strip()
-        dt_utc = datetime.strptime(clean_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        if "T" in clean_str:
+            clean_str = clean_str.replace("Z", "+00:00")
+            dt_utc = datetime.fromisoformat(clean_str).astimezone(timezone.utc)
+        else:
+            dt_utc = datetime.strptime(clean_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         target_tz = timezone(timedelta(hours=tz_offset_hours))
         dt_local = dt_utc.astimezone(target_tz)
         offset_str = get_tz_label(tz_offset_hours)
@@ -85,7 +89,10 @@ def get_event_status(
     their initial gathering day has passed.
     """
     if tz_offset_hours is None:
-        tz_offset_hours = get_system_tz_offset()
+        if current_time and current_time.utcoffset() is not None:
+            tz_offset_hours = current_time.utcoffset().total_seconds() / 3600.0
+        else:
+            tz_offset_hours = get_system_tz_offset()
     target_tz = timezone(timedelta(hours=tz_offset_hours))
     now = current_time or datetime.now(timezone.utc).astimezone(target_tz)
 
@@ -203,7 +210,7 @@ def parse_event(html: str, event_id: int, tz_offset_hours: Optional[float] = Non
     data["start_date_utc"] = start_meta["content"] if start_meta and start_meta.get("content") else None
     data["end_date_utc"] = end_meta["content"] if end_meta and end_meta.get("content") else None
 
-    # Timing: Converted to local timezone (UTC+8 default)
+    # Timing: Converted to local timezone (host system default or explicit --tz)
     _, local_start_str = utc_to_local(data["start_date_utc"], tz_offset_hours)
     _, local_end_str = utc_to_local(data["end_date_utc"], tz_offset_hours)
     data["start_date_local"] = local_start_str

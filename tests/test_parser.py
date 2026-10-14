@@ -1,5 +1,11 @@
-import unittest
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+import sys
+import unittest
+
+# Ensure repo root is in sys.path so tests run with or without PYTHONPATH=.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from scraper import parse_event, classify_event, utc_to_local, get_event_status
 
 SAMPLE_HTML = """
@@ -40,7 +46,7 @@ class TestScraper(unittest.TestCase):
         self.assertEqual(data["registration_url"], "https://events.mlh.com/events/15572-code-for-good/register")
 
     def test_timezone_conversion(self):
-        # 17:00:00 UTC -> 01:00:00 next day UTC+8
+        # UTC+8: 17:00:00 UTC -> 01:00:00 next day
         dt_local, local_str = utc_to_local("2026-10-14 17:00:00 UTC", tz_offset_hours=8)
         self.assertEqual(dt_local.year, 2026)
         self.assertEqual(dt_local.month, 10)
@@ -49,11 +55,30 @@ class TestScraper(unittest.TestCase):
         self.assertEqual(dt_local.minute, 0)
         self.assertIn("2026-10-15 01:00:00 UTC+08:00", local_str)
 
+        # UTC-4 (US Eastern / EDT): 17:00:00 UTC -> 13:00:00 same day
+        dt_edt, edt_str = utc_to_local("2026-10-14 17:00:00 UTC", tz_offset_hours=-4)
+        self.assertEqual(dt_edt.day, 14)
+        self.assertEqual(dt_edt.hour, 13)
+        self.assertIn("2026-10-14 13:00:00 UTC-04:00", edt_str)
+
+        # UTC+5.5 (India Standard Time / IST): 17:00:00 UTC -> 22:30:00 same day
+        dt_ist, ist_str = utc_to_local("2026-10-14 17:00:00 UTC", tz_offset_hours=5.5)
+        self.assertEqual(dt_ist.day, 14)
+        self.assertEqual(dt_ist.hour, 22)
+        self.assertEqual(dt_ist.minute, 30)
+        self.assertIn("2026-10-14 22:30:00 UTC+05:30", ist_str)
+
+        # ISO 8601 format with 'T' and 'Z'
+        dt_iso, iso_str = utc_to_local("2026-10-14T17:00:00Z", tz_offset_hours=0)
+        self.assertEqual(dt_iso.hour, 17)
+        self.assertIn("2026-10-14 17:00:00 UTC+00:00", iso_str)
+
     def test_event_status(self):
+        # Test under UTC+8 reference
         tz_plus_8 = timezone(timedelta(hours=8))
         ref_time = datetime(2026, 10, 15, 0, 0, 0, tzinfo=tz_plus_8)
 
-        # Event in the future (starts at 01:00)
+        # Event in the future (starts at 01:00 UTC+8 / 17:00 UTC)
         status_future = get_event_status("2026-10-14 17:00:00 UTC", "2026-10-14 18:00:00 UTC", current_time=ref_time)
         self.assertEqual(status_future, "UPCOMING")
 
@@ -70,6 +95,12 @@ class TestScraper(unittest.TestCase):
         # Multi-day event whose start was 14 days ago (like event 14868)
         status_multiday_past = get_event_status("2026-10-01 06:30:00 UTC", "2026-10-31 06:30:00 UTC", current_time=ref_time_past)
         self.assertEqual(status_multiday_past, "COMPLETED")
+
+        # Test under UTC-4 (US Eastern) reference
+        tz_minus_4 = timezone(timedelta(hours=-4))
+        ref_time_edt_upcoming = datetime(2026, 10, 14, 12, 0, 0, tzinfo=tz_minus_4)
+        status_edt = get_event_status("2026-10-14 17:00:00 UTC", "2026-10-14 18:00:00 UTC", current_time=ref_time_edt_upcoming)
+        self.assertEqual(status_edt, "UPCOMING")
 
     def test_classify_event(self):
         # Explicit Hacktoberfest series

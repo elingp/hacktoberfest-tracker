@@ -57,6 +57,7 @@ To view the schedule in a different timezone, pass the offset in hours:
 | `/ <query>` | Search title, host, or venue |
 | `c` | Clear search or filter |
 | `n` / `p` | Next or previous page |
+| `tz [offset]` | Switch timezone dynamically (e.g. `tz -4`, `tz 5.5`, `tz auto`) |
 | `u` | Check for new events |
 | `r` | Refresh timers |
 | `q` | Quit |
