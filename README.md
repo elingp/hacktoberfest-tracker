@@ -122,6 +122,12 @@ hacktoberfest-tracker/
 ├── hacktoberfest_schedule.md    # Formatted Markdown schedule
 ├── tests/
 │   └── test_parser.py           # Unit tests
+├── LICENSE                      # MIT License
 ├── README.md                    # This file
 └── AGENTS.md                    # Technical notes and invariants for AI agents
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
