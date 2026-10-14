@@ -104,6 +104,10 @@ SQLite database used for persistence and resuming:
 - **Context**: `events.db` is excluded from git. A newly cloned workspace only has `hacktoberfest_events.json`.
 - **Rule**: Both `tui.py` and `scraper.py` must check if `events.db` exists. If missing, they auto-populate `events` and `checked_ids` directly from `hacktoberfest_events.json` using the shared `bootstrap_db_from_json(conn, json_path)` helper before querying. This allows anyone cloning the repository to run `./hacktrack` immediately without scraping.
 
+### Invariant 6: Image Sanitization (AWS Presigned Query Parameter Stripping)
+- **Context**: MLH serves user-uploaded posters from Amazon S3 with short-lived presigned query strings containing `X-Amz-Credential=AKIA...` and `X-Amz-Signature=...`. GitHub Secret Scanning / Push Protection matches these strings as AWS credentials and blocks git pushes. The presigned parameters expire in 300 seconds anyway.
+- **Rule**: `parse_event()` and `export_dataset()` must strip presigned query parameters (`url.split("?")[0]`) via `sanitize_image_url()` before storing or exporting image URLs. This preserves the canonical image location while preventing secret scanner false positives.
+
 ---
 
 ## 5. Standard Development & Verification Commands

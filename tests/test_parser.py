@@ -6,7 +6,14 @@ import unittest
 # Ensure repo root is in sys.path so tests run with or without PYTHONPATH=.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scraper import parse_event, classify_event, utc_to_local, get_event_status, normalize_event_timing
+from scraper import (
+    parse_event,
+    classify_event,
+    utc_to_local,
+    get_event_status,
+    normalize_event_timing,
+    sanitize_image_url,
+)
 
 SAMPLE_HTML = """
 <!DOCTYPE html>
@@ -259,6 +266,43 @@ class TestScraper(unittest.TestCase):
             max_id = bootstrap_db_from_json(conn, test_json)
             conn.close()
             self.assertEqual(max_id, 99992)
+
+    def test_sanitize_image_url(self):
+        self.assertIsNone(sanitize_image_url(None))
+        self.assertEqual(
+            sanitize_image_url("https://example.com/banner.png"),
+            "https://example.com/banner.png",
+        )
+        s3_presigned = (
+            "https://s3.amazonaws.com/organizer.mlh.io/test1234?"
+            "X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=EXAMPLEDUMMY%2F20261014%2F"
+            "us-east-1%2Fs3%2Faws4_request&X-Amz-Signature=fake-signature"
+        )
+        self.assertEqual(
+            sanitize_image_url(s3_presigned),
+            "https://s3.amazonaws.com/organizer.mlh.io/test1234",
+        )
+
+    def test_parse_event_banner_image_sanitization(self):
+        html_with_s3 = """
+        <html>
+        <head>
+          <meta property="og:url" content="https://events.mlh.com/events/9999" />
+          <meta property="og:title" content="Event with Presigned Banner" />
+          <meta property="og:image" content="https://s3.amazonaws.com/organizer.mlh.io/poster123?X-Amz-Credential=EXAMPLEDUMMY&X-Amz-Signature=abcdef12345" />
+          <meta itemprop="startDate" content="2026-10-15 12:00:00 UTC" />
+          <meta itemprop="endDate" content="2026-10-15 14:00:00 UTC" />
+        </head>
+        <body>
+          <h1 itemprop="name">Event with Presigned Banner</h1>
+        </body>
+        </html>
+        """
+        parsed = parse_event(html_with_s3, 9999)
+        self.assertEqual(
+            parsed["banner_image"],
+            "https://s3.amazonaws.com/organizer.mlh.io/poster123",
+        )
 
 
 if __name__ == "__main__":

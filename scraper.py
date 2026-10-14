@@ -188,6 +188,15 @@ def fetch_event_html(event_id: int, session: Optional[requests.Session] = None) 
         return 0, None
 
 
+def sanitize_image_url(url: Optional[str]) -> Optional[str]:
+    """Strip temporary AWS S3 presigned query strings that expire and trigger push protection."""
+    if not url:
+        return None
+    if "X-Amz-Credential=" in url or "X-Amz-Signature=" in url or "X-Amz-Algorithm=" in url:
+        return url.split("?")[0]
+    return url
+
+
 def parse_event(html: str, event_id: int, tz_offset_hours: Optional[float] = None) -> Dict[str, Any]:
     """Parse HTML and extract all structured event metadata."""
     if tz_offset_hours is None:
@@ -280,7 +289,7 @@ def parse_event(html: str, event_id: int, tz_offset_hours: Optional[float] = Non
 
     # Cover / Banner Image
     og_img = soup.find("meta", property="og:image")
-    data["banner_image"] = og_img["content"] if og_img and og_img.get("content") else None
+    data["banner_image"] = sanitize_image_url(og_img["content"] if og_img and og_img.get("content") else None)
 
     # Organizer / Host
     data["hosted_by"] = None
@@ -292,7 +301,7 @@ def parse_event(html: str, event_id: int, tz_offset_hours: Optional[float] = Non
             host_avatar_el = host_wrapper.find("img", class_=re.compile(r"avatar"))
             data["hosted_by"] = {
                 "name": host_name_el.get_text(strip=True) if host_name_el else None,
-                "avatar_url": host_avatar_el["src"] if host_avatar_el and host_avatar_el.get("src") else None,
+                "avatar_url": sanitize_image_url(host_avatar_el["src"] if host_avatar_el and host_avatar_el.get("src") else None),
             }
 
     # Registration Link
@@ -457,6 +466,8 @@ def export_dataset(
     tz_label = get_tz_label(tz_offset_hours)
     now = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=tz_offset_hours)))
     for ev in events:
+        if ev.get("banner_image"):
+            ev["banner_image"] = sanitize_image_url(ev["banner_image"])
         normalize_event_timing(ev, tz_offset_hours, current_time=now)
 
     with open(json_path, "w", encoding="utf-8") as f:
