@@ -1,0 +1,27 @@
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# SQLite binary databases (auto-bootstrapped from hacktoberfest_events.json)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Temporary / scratch / test outputs
+event_*.html
+event_*.json
+events_sample*.json
+
+# OS / Editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
