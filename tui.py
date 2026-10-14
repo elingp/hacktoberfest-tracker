@@ -343,11 +343,14 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
     filter_label = "Upcoming Events (Yet to be held)"
     search_query = ""
     current_page = 1
+    needs_reload = False
 
     while True:
         try:
             console.clear()
-            events = load_events(tz_offset=tz_offset)
+            if needs_reload:
+                events = load_events(tz_offset=tz_offset)
+                needs_reload = False
             now = get_current_local_time(tz_offset)
             render_dashboard_header(events, filter_label, tz_offset)
 
@@ -355,7 +358,6 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
             filtered = [e for e in events if not e.get("is_test")]
             if current_filter == "today":
                 # Events starting within the next 24 hours
-                from scraper import utc_to_local
                 next_24h = now + timedelta(hours=24)
                 today_events = []
                 for e in filtered:
@@ -464,7 +466,7 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
             console.clear()
             console.print("[bold cyan]🔄 Scanning for newly added events on MLH...[/bold cyan]")
             new_count = update_events(tz_offset_hours=tz_offset)
-            events = load_events(tz_offset=tz_offset)
+            needs_reload = True
             console.print(f"\n[bold green]Scan complete! Found {new_count} new Hacktoberfest events. Tracker reloaded.[/bold green]")
             try:
                 Prompt.ask("\nPress Enter to return to tracker...")
@@ -509,35 +511,35 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
                     console.print(f"[red]Event ID {val} not found.[/red]")
         elif c_lower.startswith("tz"):
             parts = choice.split(maxsplit=1)
-            if len(parts) > 1:
-                val = parts[1].strip().lower()
+            raw_input = parts[1].strip() if len(parts) > 1 else ""
+            if not raw_input:
+                try:
+                    raw_input = Prompt.ask("Enter timezone offset in hours (e.g. -4, 5.5, or 'auto')").strip()
+                except (KeyboardInterrupt, EOFError):
+                    raw_input = ""
+            if raw_input:
+                val = raw_input.lower()
                 if val in ("auto", "host", "reset"):
                     tz_offset = get_system_tz_offset()
+                    needs_reload = True
                     console.print(f"[bold green]Timezone reset to auto-detected host ({get_tz_label(tz_offset)})[/bold green]")
                 else:
                     try:
-                        tz_offset = float(val)
-                        console.print(f"[bold green]Timezone switched to {get_tz_label(tz_offset)}[/bold green]")
+                        parsed_tz = float(val)
+                        if -12.0 <= parsed_tz <= 14.0:
+                            tz_offset = parsed_tz
+                            needs_reload = True
+                            console.print(f"[bold green]Timezone switched to {get_tz_label(tz_offset)}[/bold green]")
+                        else:
+                            console.print(f"[bold red]Timezone offset must be between -12 and +14 hours (got {parsed_tz}).[/bold red]")
                     except ValueError:
-                        console.print(f"[bold red]Invalid timezone offset: '{parts[1]}'. Use hours (e.g. 'tz -4', 'tz 5.5', 'tz auto').[/bold red]")
-            else:
+                        console.print(f"[bold red]Invalid timezone offset: '{raw_input}'. Use hours (e.g. 'tz -4', 'tz 5.5', 'tz auto').[/bold red]")
                 try:
-                    new_tz_input = Prompt.ask("Enter timezone offset in hours (e.g. -4, 5.5, or 'auto')").strip().lower()
-                    if new_tz_input in ("auto", "host", "reset"):
-                        tz_offset = get_system_tz_offset()
-                        console.print(f"[bold green]Timezone reset to auto-detected host ({get_tz_label(tz_offset)})[/bold green]")
-                    else:
-                        tz_offset = float(new_tz_input)
-                        console.print(f"[bold green]Timezone switched to {get_tz_label(tz_offset)}[/bold green]")
+                    Prompt.ask("\nPress Enter to continue...")
                 except (KeyboardInterrupt, EOFError):
                     pass
-                except ValueError:
-                    console.print("[bold red]Invalid numeric timezone offset.[/bold red]")
-            try:
-                Prompt.ask("\nPress Enter to continue...")
-            except (KeyboardInterrupt, EOFError):
-                pass
         elif c_lower == "r":
+            needs_reload = True
             continue
 
 
@@ -598,6 +600,7 @@ def main():
                 or q in (e.get("series") or "").lower()
                 or q in (e.get("description") or "").lower()
                 or q in (e.get("address") or "").lower()
+                or q in (e.get("venue_name") or "").lower()
             ]
             label += f" matching '{args.search}'"
 

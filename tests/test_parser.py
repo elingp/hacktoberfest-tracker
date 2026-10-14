@@ -102,9 +102,23 @@ class TestScraper(unittest.TestCase):
         status_edt = get_event_status("2026-10-14 17:00:00 UTC", "2026-10-14 18:00:00 UTC", current_time=ref_time_edt_upcoming)
         self.assertEqual(status_edt, "UPCOMING")
 
+        # Test with naive datetime (safeguard against naive vs aware comparison crash)
+        ref_time_naive = datetime(2026, 10, 15, 3, 0, 0)
+        status_naive = get_event_status("2026-10-14 17:00:00 UTC", "2026-10-14 18:00:00 UTC", current_time=ref_time_naive, tz_offset_hours=8)
+        self.assertEqual(status_naive, "COMPLETED")
+
     def test_classify_event(self):
         # Explicit Hacktoberfest series
         is_hf, is_test = classify_event("Hackathon Day", "Hacktoberfest 2026")
+        self.assertTrue(is_hf)
+        self.assertFalse(is_test)
+
+        # Non-test event containing substring 'test' like 'contest' or 'latest'
+        is_hf, is_test = classify_event("Hacktoberfest Coding Contest", "Hacktoberfest 2026")
+        self.assertTrue(is_hf)
+        self.assertFalse(is_test)
+
+        is_hf, is_test = classify_event("The Latest in Open Source", "Hacktoberfest 2026")
         self.assertTrue(is_hf)
         self.assertFalse(is_test)
 
@@ -118,14 +132,39 @@ class TestScraper(unittest.TestCase):
         self.assertTrue(is_hf)
         self.assertFalse(is_test)
 
-        # Test event
+        # Test event with word boundary
         is_hf, is_test = classify_event("Stephen Test Hacktoberfest", "Hacktoberfest 2026")
+        self.assertTrue(is_hf)
+        self.assertTrue(is_test)
+
+        is_hf, is_test = classify_event("Hackathon tests session", "Hacktoberfest 2026")
         self.assertTrue(is_hf)
         self.assertTrue(is_test)
 
         # Unrelated event
         is_hf, is_test = classify_event("Intro to SQL", "GHW Data week")
         self.assertFalse(is_hf)
+
+    def test_tui_helpers(self):
+        from tui import get_event_page_url, format_countdown
+
+        # Invariant 1: Ensure URL points to overview page, never ends with /register
+        event_with_reg = {
+            "event_id": 15572,
+            "url": "https://events.mlh.com/events/15572-code-for-good/register",
+        }
+        self.assertEqual(get_event_page_url(event_with_reg), "https://events.mlh.com/events/15572-code-for-good")
+
+        event_clean = {
+            "event_id": 15572,
+            "url": "https://events.mlh.com/events/15572-code-for-good",
+        }
+        self.assertEqual(get_event_page_url(event_clean), "https://events.mlh.com/events/15572-code-for-good")
+
+        # Countdown formatting
+        self.assertEqual(format_countdown(None), "TBA")
+        self.assertEqual(format_countdown(""), "TBA")
+
 
 if __name__ == "__main__":
     unittest.main()
