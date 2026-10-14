@@ -6,7 +6,7 @@ import unittest
 # Ensure repo root is in sys.path so tests run with or without PYTHONPATH=.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scraper import parse_event, classify_event, utc_to_local, get_event_status
+from scraper import parse_event, classify_event, utc_to_local, get_event_status, normalize_event_timing
 
 SAMPLE_HTML = """
 <!DOCTYPE html>
@@ -164,6 +164,49 @@ class TestScraper(unittest.TestCase):
         # Countdown formatting
         self.assertEqual(format_countdown(None), "TBA")
         self.assertEqual(format_countdown(""), "TBA")
+
+    def test_normalize_event_timing(self):
+        tz_offset = 8.0
+        now = datetime(2026, 10, 15, 0, 0, 0, tzinfo=timezone(timedelta(hours=tz_offset)))
+        ev = {
+            "event_id": 100,
+            "start_date_utc": "2026-10-14 17:00:00 UTC",
+            "end_date_utc": "2026-10-14 18:00:00 UTC",
+        }
+        normalize_event_timing(ev, tz_offset_hours=tz_offset, current_time=now)
+        self.assertIn("2026-10-15 01:00:00", ev["start_date_local"])
+        self.assertIn("2026-10-15 02:00:00", ev["end_date_local"])
+        self.assertEqual(ev["status"], "UPCOMING")
+
+    def test_tui_filters(self):
+        from tui import filter_today_events, filter_by_search
+
+        tz_offset = 8.0
+        now = datetime(2026, 10, 15, 0, 0, 0, tzinfo=timezone(timedelta(hours=tz_offset)))
+        events = [
+            # In 1 hour -> today
+            {"event_id": 1, "title": "Copilot Workshop", "start_date_utc": "2026-10-14 17:00:00 UTC", "status": "UPCOMING"},
+            # In 30 hours -> not today
+            {"event_id": 2, "title": "Closing Ceremony", "start_date_utc": "2026-10-15 22:00:00 UTC", "status": "UPCOMING"},
+            # Currently LIVE
+            {"event_id": 3, "title": "Live Hackathon", "start_date_utc": "2026-10-14 15:00:00 UTC", "status": "LIVE"},
+        ]
+
+        today = filter_today_events(events, now, tz_offset)
+        self.assertEqual([e["event_id"] for e in today], [1, 3])
+
+        # Search across title
+        results = filter_by_search(events, "copilot")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["event_id"], 1)
+
+        # Search across venue_name or description
+        events_extra = [
+            {"event_id": 4, "title": "Meetup", "venue_name": "GitHub HQ", "description": "Fun times"},
+        ]
+        self.assertEqual(len(filter_by_search(events_extra, "github")), 1)
+        self.assertEqual(len(filter_by_search(events_extra, "times")), 1)
+        self.assertEqual(len(filter_by_search(events_extra, "nonexistent")), 0)
 
 
 if __name__ == "__main__":

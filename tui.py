@@ -25,7 +25,7 @@ from scraper import (
     get_system_tz_offset,
     get_tz_label,
     utc_to_local,
-    get_event_status,
+    normalize_event_timing,
     update_events,
 )
 
@@ -115,18 +115,7 @@ def load_events(db_path: str = DB_PATH, tz_offset: float = DEFAULT_TZ_OFFSET) ->
     now = get_current_local_time(tz_offset)
 
     for e in events:
-        _, start_local_str = utc_to_local(e.get("start_date_utc"), tz_offset)
-        if start_local_str:
-            e["start_date_local"] = start_local_str
-        _, end_local_str = utc_to_local(e.get("end_date_utc"), tz_offset)
-        if end_local_str:
-            e["end_date_local"] = end_local_str
-        e["status"] = get_event_status(
-            e.get("start_date_utc"),
-            e.get("end_date_utc"),
-            current_time=now,
-            tz_offset_hours=tz_offset,
-        )
+        normalize_event_timing(e, tz_offset, current_time=now)
 
     return events
 
@@ -137,11 +126,12 @@ def render_dashboard_header(events: List[Dict[str, Any]], active_filter_label: s
     tz_label = get_tz_label(tz_offset)
 
     total = len(events)
-    live = sum(1 for e in events if e.get("status") == "LIVE" and not e.get("is_test"))
-    upcoming = sum(1 for e in events if e.get("status") == "UPCOMING" and not e.get("is_test"))
-    completed = sum(1 for e in events if e.get("status") == "COMPLETED" and not e.get("is_test"))
-    virtual = sum(1 for e in events if e.get("location_type") == "Virtual" and not e.get("is_test"))
-    in_person = sum(1 for e in events if e.get("location_type") == "In-Person" and not e.get("is_test"))
+    valid = [e for e in events if not e.get("is_test")]
+    live = sum(1 for e in valid if e.get("status") == "LIVE")
+    upcoming = sum(1 for e in valid if e.get("status") == "UPCOMING")
+    completed = sum(1 for e in valid if e.get("status") == "COMPLETED")
+    virtual = sum(1 for e in valid if e.get("location_type") == "Virtual")
+    in_person = sum(1 for e in valid if e.get("location_type") == "In-Person")
 
     banner_text = (
         f"[bold cyan]🎃 Hacktoberfest 2026 Tracker (hacktrack)[/bold cyan]\n"
@@ -337,6 +327,39 @@ def show_event_details(event: Dict[str, Any], tz_offset: float = DEFAULT_TZ_OFFS
             break
 
 
+def filter_today_events(events: List[Dict[str, Any]], now: datetime, tz_offset: float) -> List[Dict[str, Any]]:
+    """Return events starting within the next 24 hours or currently LIVE."""
+    next_24h = now + timedelta(hours=24)
+    result = []
+    for e in events:
+        start_dt, _ = utc_to_local(e.get("start_date_utc"), tz_offset)
+        if start_dt and (now <= start_dt <= next_24h or e.get("status") == "LIVE"):
+            result.append(e)
+    return result
+
+
+def filter_by_search(events: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+    """Return events matching query across title, series, description, address, or venue."""
+    q = query.lower()
+    fields = ("title", "series", "description", "address", "venue_name")
+    return [
+        e for e in events
+        if any(q in (e.get(f) or "").lower() for f in fields)
+    ]
+
+
+FILTER_PRESETS = {
+    "t": ("today", "Today / Next 24 Hours"),
+    "1": ("upcoming", "Upcoming Events (Yet to be held)"),
+    "2": ("virtual_upcoming", "Virtual Upcoming Events"),
+    "3": ("live", "Live Right Now"),
+    "4": ("in_person", "In-Person Events"),
+    "5": ("completed", "Completed Events"),
+    "6": ("all", "All Events"),
+    "c": ("upcoming", "Upcoming Events (Yet to be held)"),
+}
+
+
 def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ_OFFSET):
     """Main interactive TUI loop with pagination, safe interrupts, and detail navigation."""
     current_filter = "upcoming"
@@ -357,14 +380,7 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
             # Filter events
             filtered = [e for e in events if not e.get("is_test")]
             if current_filter == "today":
-                # Events starting within the next 24 hours
-                next_24h = now + timedelta(hours=24)
-                today_events = []
-                for e in filtered:
-                    start_dt, _ = utc_to_local(e.get("start_date_utc"), tz_offset)
-                    if start_dt and (now <= start_dt <= next_24h or e.get("status") == "LIVE"):
-                        today_events.append(e)
-                filtered = today_events
+                filtered = filter_today_events(filtered, now, tz_offset)
             elif current_filter == "upcoming":
                 filtered = [e for e in filtered if e.get("status") == "UPCOMING"]
             elif current_filter == "virtual_upcoming":
@@ -378,15 +394,7 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
             elif current_filter == "all":
                 pass
             elif current_filter == "search" and search_query:
-                q = search_query.lower()
-                filtered = [
-                    e for e in filtered
-                    if q in (e.get("title") or "").lower()
-                    or q in (e.get("series") or "").lower()
-                    or q in (e.get("description") or "").lower()
-                    or q in (e.get("address") or "").lower()
-                    or q in (e.get("venue_name") or "").lower()
-                ]
+                filtered = filter_by_search(filtered, search_query)
 
             total_pages = max(1, math.ceil(len(filtered) / PAGE_SIZE))
             current_page = max(1, min(current_page, total_pages))
@@ -429,38 +437,10 @@ def interactive_loop(events: List[Dict[str, Any]], tz_offset: float = DEFAULT_TZ
         elif c_lower == "p":
             if current_page > 1:
                 current_page -= 1
-        elif c_lower == "t":
-            current_filter = "today"
-            filter_label = "Today / Next 24 Hours"
-            current_page = 1
-        elif c_lower == "1":
-            current_filter = "upcoming"
-            filter_label = "Upcoming Events (Yet to be held)"
-            current_page = 1
-        elif c_lower == "2":
-            current_filter = "virtual_upcoming"
-            filter_label = "Virtual Upcoming Events"
-            current_page = 1
-        elif c_lower == "3":
-            current_filter = "live"
-            filter_label = "Live Right Now"
-            current_page = 1
-        elif c_lower == "4":
-            current_filter = "in_person"
-            filter_label = "In-Person Events"
-            current_page = 1
-        elif c_lower == "5":
-            current_filter = "completed"
-            filter_label = "Completed Events"
-            current_page = 1
-        elif c_lower == "6":
-            current_filter = "all"
-            filter_label = "All Events"
-            current_page = 1
-        elif c_lower == "c":
-            current_filter = "upcoming"
-            filter_label = "Upcoming Events (Yet to be held)"
-            search_query = ""
+        elif c_lower in FILTER_PRESETS:
+            current_filter, filter_label = FILTER_PRESETS[c_lower]
+            if c_lower == "c":
+                search_query = ""
             current_page = 1
         elif c_lower == "u":
             console.clear()
@@ -573,13 +553,7 @@ def main():
         label = "Events"
 
         if args.today:
-            next_24h = now + timedelta(hours=24)
-            today_events = []
-            for e in filtered:
-                start_dt, _ = utc_to_local(e.get("start_date_utc"), tz_offset)
-                if start_dt and (now <= start_dt <= next_24h or e.get("status") == "LIVE"):
-                    today_events.append(e)
-            filtered = today_events
+            filtered = filter_today_events(filtered, now, tz_offset)
             label = "Today / Next 24 Hours " + label
         elif args.online:
             filtered = [e for e in filtered if e.get("location_type") == "Virtual"]
@@ -593,15 +567,7 @@ def main():
             label = "Live " + label
 
         if args.search:
-            q = args.search.lower()
-            filtered = [
-                e for e in filtered
-                if q in (e.get("title") or "").lower()
-                or q in (e.get("series") or "").lower()
-                or q in (e.get("description") or "").lower()
-                or q in (e.get("address") or "").lower()
-                or q in (e.get("venue_name") or "").lower()
-            ]
+            filtered = filter_by_search(filtered, args.search)
             label += f" matching '{args.search}'"
 
         render_dashboard_header(events, label, tz_offset=tz_offset)

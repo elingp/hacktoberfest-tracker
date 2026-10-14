@@ -126,6 +126,27 @@ def get_event_status(
             return "COMPLETED"
 
 
+def normalize_event_timing(
+    event: Dict[str, Any],
+    tz_offset_hours: Optional[float] = None,
+    current_time: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Populate start_date_local, end_date_local, and status for an event in-place."""
+    if tz_offset_hours is None:
+        tz_offset_hours = get_system_tz_offset()
+    _, local_start_str = utc_to_local(event.get("start_date_utc"), tz_offset_hours)
+    _, local_end_str = utc_to_local(event.get("end_date_utc"), tz_offset_hours)
+    event["start_date_local"] = local_start_str
+    event["end_date_local"] = local_end_str
+    event["status"] = get_event_status(
+        event.get("start_date_utc"),
+        event.get("end_date_utc"),
+        current_time=current_time,
+        tz_offset_hours=tz_offset_hours,
+    )
+    return event
+
+
 def classify_event(title: Optional[str], series: Optional[str]) -> Tuple[bool, bool]:
     """
     Check if an event belongs to Hacktoberfest 2026.
@@ -135,9 +156,7 @@ def classify_event(title: Optional[str], series: Optional[str]) -> Tuple[bool, b
     s = (series or "").lower()
 
     # Test event check (use word boundary to avoid false positives on 'contest', 'latest', etc.)
-    is_test = False
-    if re.search(r"\btests?\b", t) or re.search(r"\btests?\b", s):
-        is_test = True
+    is_test = bool(re.search(r"\btests?\b", t) or re.search(r"\btests?\b", s))
 
     # Hacktoberfest checks:
     # 1. Explicit Hacktoberfest series
@@ -148,13 +167,7 @@ def classify_event(title: Optional[str], series: Optional[str]) -> Tuple[bool, b
     if "hacktoberfest" in t or "hack 4 humanity" in t:
         return True, is_test
 
-    # 3. GHW Hacktoberfest livestreams
-    if "ghw" in s and "hacktoberfest" in t:
-        return True, is_test
-    if "[ghw hacktoberfest]" in t or "ghw: hacktoberfest" in t:
-        return True, is_test
-
-    # 4. Hacking with GitHub Copilot / Google AI Studio during October
+    # 3. Hacking with GitHub Copilot / Google AI Studio during October
     if "hacking with github copilot" in s or "intro to google ai studio" in s:
         return True, is_test
 
@@ -212,14 +225,8 @@ def parse_event(html: str, event_id: int, tz_offset_hours: Optional[float] = Non
     data["start_date_utc"] = start_meta["content"] if start_meta and start_meta.get("content") else None
     data["end_date_utc"] = end_meta["content"] if end_meta and end_meta.get("content") else None
 
-    # Timing: Converted to local timezone (host system default or explicit --tz)
-    _, local_start_str = utc_to_local(data["start_date_utc"], tz_offset_hours)
-    _, local_end_str = utc_to_local(data["end_date_utc"], tz_offset_hours)
-    data["start_date_local"] = local_start_str
-    data["end_date_local"] = local_end_str
-
-    # Status: UPCOMING / LIVE / COMPLETED
-    data["status"] = get_event_status(data["start_date_utc"], data["end_date_utc"], tz_offset_hours=tz_offset_hours)
+    # Timing: Converted to local timezone and status resolved
+    normalize_event_timing(data, tz_offset_hours)
 
     # Timing: Human-readable display from original page
     clock_icon = soup.find("i", class_=re.compile(r"fa-clock"))
@@ -246,25 +253,19 @@ def parse_event(html: str, event_id: int, tz_offset_hours: Optional[float] = Non
     data["address"] = None
 
     if location_el:
-        nested_place = location_el.find(attrs={"itemtype": re.compile(r"Place")})
-        if nested_place:
+        place_el = location_el.find(attrs={"itemtype": re.compile(r"Place")}) or (
+            location_el if "Place" in location_el.get("itemtype", "") else None
+        )
+        if place_el:
             data["location_type"] = "In-Person"
-            vname = nested_place.find(attrs={"itemprop": "name"})
+            vname = place_el.find(attrs={"itemprop": "name"})
             data["venue_name"] = vname.get_text(strip=True) if vname else None
-            addr_pre = nested_place.find("pre")
+            addr_pre = place_el.find("pre")
             data["address"] = addr_pre.get_text("\n", strip=True) if addr_pre else None
         else:
-            itemtype = location_el.get("itemtype", "")
-            if "Place" in itemtype:
-                data["location_type"] = "In-Person"
-                vname = location_el.find(attrs={"itemprop": "name"})
-                data["venue_name"] = vname.get_text(strip=True) if vname else None
-                addr_pre = location_el.find("pre")
-                data["address"] = addr_pre.get_text("\n", strip=True) if addr_pre else None
-            else:
-                data["location_type"] = "Virtual"
-                loc_txt = location_el.find("div", class_=re.compile(r"text-semibold"))
-                data["location_display"] = loc_txt.get_text(strip=True) if loc_txt else "Event is hosted online"
+            data["location_type"] = "Virtual"
+            loc_txt = location_el.find("div", class_=re.compile(r"text-semibold"))
+            data["location_display"] = loc_txt.get_text(strip=True) if loc_txt else "Event is hosted online"
 
     # Description
     desc_el = soup.find("div", itemprop="description")
@@ -443,13 +444,7 @@ def export_dataset(
     tz_label = get_tz_label(tz_offset_hours)
     now = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=tz_offset_hours)))
     for ev in events:
-        _, start_local_str = utc_to_local(ev.get("start_date_utc"), tz_offset_hours)
-        if start_local_str:
-            ev["start_date_local"] = start_local_str
-        _, end_local_str = utc_to_local(ev.get("end_date_utc"), tz_offset_hours)
-        if end_local_str:
-            ev["end_date_local"] = end_local_str
-        ev["status"] = get_event_status(ev.get("start_date_utc"), ev.get("end_date_utc"), current_time=now, tz_offset_hours=tz_offset_hours)
+        normalize_event_timing(ev, tz_offset_hours, current_time=now)
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(events, f, indent=2, ensure_ascii=False)
